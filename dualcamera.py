@@ -1,10 +1,15 @@
 from picamera import mmalobj as mo, mmal
 from picamera import PiCamera
-
 from time import sleep
-
 from signal import pause
-import time
+#import time
+
+##-- SETTINGS --##
+screen_width = 800
+screen_height = 480
+y_offset = 50
+
+width_half = int(screen_width/2)
 
 camera = mo.MMALCamera()
 splitter = mo.MMALSplitter()
@@ -24,31 +29,34 @@ render_right = mo.MMALRenderer()
 #what is printed?
 #print(mp.u)
 
-#TODO remove
-count=0
-lastbuttonstate=0;
-presscount=1;
 
-#???
-camera.outputs[0].framerate=70
-camera.outputs[0].framesize=(1080,720)
+#Set camera formats
+camera.outputs[0].framerate=60
+camera.outputs[0].framesize=(1080,1080)
 camera.outputs[0].commit()
 
-p = render_left.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]
-p.set = mmal.MMAL_DISPLAY_SET_FULLSCREEN | mmal.MMAL_DISPLAY_SET_DEST_RECT
-p.fullscreen = False
+#Prepare displayregion
+display_region = render_left.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]
+display_region.set = mmal.MMAL_DISPLAY_SET_FULLSCREEN | mmal.MMAL_DISPLAY_SET_DEST_RECT
+display_region.fullscreen = False
 
-p.dest_rect = mmal.MMAL_RECT_T(0,35,400,480)
-render_left.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]=p
-p.dest_rect = mmal.MMAL_RECT_T(400,35,400,480)
-render_right.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]=p
+#Map renderers on screen space
+#rect format: (minX, minY, width, height)
+display_region.dest_rect = mmal.MMAL_RECT_T(0, y_offset, width_half, screen_height)
+render_left.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]=display_region
 
+display_region.dest_rect = mmal.MMAL_RECT_T(width_half, y_offset, width_half, screen_height)
+render_right.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]=display_region
+
+#Connect both renderers to sources
 splitter.connect(camera.outputs[0])
 render_left.connect(splitter.outputs[0])
 render_right.connect(splitter.outputs[1])
 
+#Enable Renderers
 splitter.enable()
 render_left.enable()
 render_right.enable()
 
+#Continue rendering unil interrupted
 pause()
